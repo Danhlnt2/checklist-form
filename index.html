@@ -33,8 +33,10 @@
   .device-list { display: flex; flex-wrap: wrap; gap: 8px; }
   .device-chip { border: 1px solid #ccc; padding: 6px 12px; border-radius: 20px; font-size: 13px; cursor: pointer; background: var(--bg); user-select: none; }
   .device-chip.active { background: var(--button); color: var(--button-text); border-color: var(--button); }
-  .device-qty { display: none; width: 60px; margin-left: 6px; }
-  .device-chip.active .device-qty { display: inline-block; }
+  .device-qty-list { margin-top: 10px; }
+  .device-qty-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .device-qty-row span { flex: 1; font-size: 14px; }
+  .device-qty-row input { width: 70px; }
   .visit-block { background: var(--bg); border: 1px dashed #ccc; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
   .visit-block h4 { margin: 0 0 8px; font-size: 13px; color: var(--link); }
   .hidden { display: none !important; }
@@ -121,6 +123,7 @@
 <div class="section">
   <div class="section-title">2. Thiết bị kèm theo</div>
   <div class="device-list" id="deviceList"></div>
+  <div class="device-qty-list" id="deviceQtyList"></div>
 </div>
 
 <div class="section" id="visitsSection">
@@ -191,12 +194,34 @@ function buildDeviceList() {
     const chip = document.createElement('div');
     chip.className = 'device-chip';
     chip.id = 'chip_' + idx;
-    chip.innerHTML = `<span onclick="toggleDevice(${idx})">${dev}</span><input type="number" min="1" value="1" class="device-qty" id="qty_${idx}">`;
+    chip.textContent = dev;
+    chip.onclick = () => toggleDevice(idx);
     wrap.appendChild(chip);
   });
 }
+
+// Chip chỉ đổi màu khi active, KHÔNG chèn thêm gì vào bên trong -> vị trí các chip
+// luôn cố định, tránh bị dồn/xô khi chọn (trước đây ô số lượng chèn trong chip làm
+// layout xô lệch, dễ bấm trúng nhầm chip khác ở lần bấm tiếp theo).
+// Số lượng của các thiết bị đã chọn hiển thị ở 1 danh sách riêng bên dưới.
 function toggleDevice(idx) {
-  document.getElementById('chip_' + idx).classList.toggle('active');
+  const chip = document.getElementById('chip_' + idx);
+  chip.classList.toggle('active');
+  renderDeviceQtyList();
+}
+
+function renderDeviceQtyList() {
+  const wrap = document.getElementById('deviceQtyList');
+  const activeIdx = DEVICES.map((_, i) => i).filter(i => document.getElementById('chip_' + i).classList.contains('active'));
+  wrap.innerHTML = "";
+  activeIdx.forEach(idx => {
+    const prevVal = document.getElementById('qty_' + idx);
+    const val = prevVal ? prevVal.value : '1';
+    const row = document.createElement('div');
+    row.className = 'device-qty-row';
+    row.innerHTML = `<span>${DEVICES[idx]}</span><input type="number" min="1" value="${val}" id="qty_${idx}">`;
+    wrap.appendChild(row);
+  });
 }
 
 function renderForm() {
