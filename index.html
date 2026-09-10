@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ghi chú Checklist</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #222222);
+    --hint: var(--tg-theme-hint-color, #999999);
+    --link: var(--tg-theme-link-color, #2481cc);
+    --button: var(--tg-theme-button-color, #2481cc);
+    --button-text: var(--tg-theme-button-text-color, #ffffff);
+    --secbg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 14px; background: var(--bg); color: var(--text); font-family: -apple-system, Roboto, Arial, sans-serif; font-size: 15px; padding-bottom: 90px; }
+  h2 { font-size: 17px; margin: 0 0 4px; }
+  .sub { color: var(--hint); font-size: 13px; margin-bottom: 16px; }
+  .section { background: var(--secbg); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  .section-title { font-weight: 700; color: #dc3545; margin: 0 0 12px; font-size: 14px; border-bottom: 2px solid #dc3545; padding-bottom: 6px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--hint); margin-bottom: 4px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; padding: 10px; border: 1px solid #d0d0d5; border-radius: 8px;
+    font-size: 15px; background: var(--bg); color: var(--text);
+  }
+  input:required:invalid, select:required:invalid { border-color: #d0d0d5; }
+  .invalid { border-color: #dc3545 !important; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .device-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .device-chip { border: 1px solid #ccc; padding: 6px 12px; border-radius: 20px; font-size: 13px; cursor: pointer; background: var(--bg); user-select: none; }
+  .device-chip.active { background: var(--button); color: var(--button-text); border-color: var(--button); }
+  .device-qty { display: none; width: 60px; margin-left: 6px; }
+  .device-chip.active .device-qty { display: inline-block; }
+  .visit-block { background: var(--bg); border: 1px dashed #ccc; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+  .visit-block h4 { margin: 0 0 8px; font-size: 13px; color: var(--link); }
+  .hidden { display: none !important; }
+  .rep-upload-box { margin-top: 10px; padding: 10px; background: var(--bg); border: 1px dashed #6f42c1; border-radius: 8px; }
+  .btn-small { background: #6f42c1; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .status-ok { color: #28a745; font-weight: 600; font-size: 13px; margin-top: 6px; }
+  .status-err { color: #dc3545; font-weight: 600; font-size: 13px; margin-top: 6px; }
+  .footer-bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 14px; background: var(--bg); border-top: 1px solid #e2e2e2; }
+  .submit-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--button); color: var(--button-text); font-size: 16px; font-weight: 700; cursor: pointer; }
+  .err-banner { background: #fff5f5; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<h2>📝 Ghi chú Checklist</h2>
+<div class="sub">Form backup khi trang web chính bị lỗi. Điền xong bấm nút bên dưới để gửi thẳng về bot Telegram.</div>
+
+<div id="errBanner" class="err-banner hidden"></div>
+
+<div class="section">
+  <div class="section-title">Loại &amp; số lần</div>
+  <div class="grid2">
+    <div class="field">
+      <label>Loại Checklist</label>
+      <select id="clType">
+        <option value="normal">List thường</option>
+        <option value="cancel">List huỷ</option>
+      </select>
+    </div>
+    <div class="field">
+      <label id="solanLabel">Số lần lên Checklist</label>
+      <input type="number" id="clSoLan" min="1" placeholder="vd: 1, 2, 3...">
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">1. Thông tin chung &amp; Mô hình</div>
+  <div class="field"><label>Số hợp đồng</label><input type="text" id="clHd" placeholder="HU..."></div>
+  <div class="grid2">
+    <div class="field"><label>Số lượng AP</label><input type="number" id="clAp" placeholder="vd: 2"></div>
+    <div class="field">
+      <label>Nhu cầu</label>
+      <select id="clNc">
+        <option value="">-- Chọn --</option>
+        <option>Gia đình</option><option>Phòng trọ</option><option>Quán Cafe</option><option>Công ty</option><option>Khác</option>
+      </select>
+    </div>
+    <div class="field"><label>Số tầng</label><input type="number" id="clTang" placeholder="vd: 2"></div>
+    <div class="field"><label>Vị trí dùng chính</label><input type="text" id="clVitri" placeholder="Phòng khách, P.Ngủ..."></div>
+    <div class="field">
+      <label>Sử dụng rệp</label>
+      <select id="clDungRep">
+        <option value="">-- Chọn --</option>
+        <option>Không</option><option>Có</option>
+      </select>
+    </div>
+  </div>
+  <div id="repBox" class="rep-upload-box hidden">
+    <input type="file" id="repFile" accept="image/*" class="hidden">
+    <button type="button" class="btn-small" onclick="document.getElementById('repFile').click()">📌 Up ảnh Rệp lên Google Drive</button>
+    <div id="repStatus"></div>
+    <div class="field" style="margin-top:8px;">
+      <label>Hoặc dán link sẵn có (Google Drive/Zalo...)</label>
+      <input type="text" id="clLinkRepManual" placeholder="https://...">
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">2. Thiết bị kèm theo</div>
+  <div class="device-list" id="deviceList"></div>
+</div>
+
+<div class="section" id="visitsSection">
+  <div class="section-title">3. Thông tin xử lý</div>
+  <div id="visitsContainer"></div>
+  <div class="field" id="phoneField" style="display:none;">
+    <label>📞 Số điện thoại Recare</label>
+    <input type="text" id="clPhone" placeholder="Nhập SĐT khách...">
+  </div>
+</div>
+
+<div class="section hidden" id="deepSection">
+  <div class="section-title">4. Giải pháp triệt để (lặp ≥ 3)</div>
+  <div class="field"><label>Nguyên nhân gốc &amp; giải pháp</label><input type="text" id="clGoc"></div>
+  <div class="field"><label>Kinh nghiệm rút ra</label><input type="text" id="clKn"></div>
+</div>
+
+<div class="section hidden" id="cancelSection">
+  <div class="section-title">4. Thông tin huỷ</div>
+  <div class="field">
+    <label>Khách hàng chuyển mạng gì</label>
+    <select id="clNet" onchange="toggleNetFields()">
+      <option value="">-- Chọn --</option>
+      <option>Viettel</option><option>VNPT</option><option>Mobifone</option><option>VTVCab</option>
+      <option>Không dùng mạng nữa</option><option>Không nắm</option><option>Khác</option>
+    </select>
+  </div>
+  <div id="netPkgBox" class="hidden">
+    <div class="field"><label>Gói cước bao nhiêu</label><input type="text" id="clPkg" placeholder="vd: 180.000đ"></div>
+    <div class="field"><label>Tốc độ</label><input type="text" id="clSpeed" placeholder="vd: 300Mbps"></div>
+    <div class="field"><label>Thiết bị kèm theo</label><input type="text" id="clDevCancel" placeholder="vd: Modem WiFi 6"></div>
+  </div>
+  <div class="field"><label>SĐT người tiếp xúc</label><input type="text" id="clContactPhone"></div>
+  <div class="field">
+    <label>Nguyên nhân huỷ</label>
+    <select id="clReason">
+      <option value="">-- Chọn --</option>
+      <option>Cước phí</option>
+      <option>Chất lượng đường truyền</option>
+      <option>Khách hàng giảm nhu cầu</option>
+      <option>Khách hàng chuyển đi nơi khác</option>
+      <option>Khách hàng không cung cấp thông tin</option>
+    </select>
+  </div>
+  <div class="field"><label>Ghi chú thêm</label><input type="text" id="clOtherInfo" placeholder="Nội dung KH chia sẻ..."></div>
+</div>
+
+<div style="height:8px;"></div>
+
+<div class="footer-bar">
+  <button class="submit-btn" onclick="submitForm()">🚀 Gửi ghi chú về Bot</button>
+</div>
+
+<script>
+const tg = window.Telegram ? window.Telegram.WebApp : null;
+if (tg) { tg.expand(); tg.ready(); }
+
+const UPLOAD_URL = "https://danhlnt.pythonanywhere.com/upload_local";
+const DEVICES = ["Smart TV", "Máy tính", "Laptop", "Điện thoại di động", "Camera", "Box", "Khác"];
+let uploadedRepLink = "";
+
+function buildDeviceList() {
+  const wrap = document.getElementById('deviceList');
+  wrap.innerHTML = "";
+  DEVICES.forEach((dev, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'device-chip';
+    chip.id = 'chip_' + idx;
+    chip.innerHTML = `<span onclick="toggleDevice(${idx})">${dev}</span><input type="number" min="1" value="1" class="device-qty" id="qty_${idx}">`;
+    wrap.appendChild(chip);
+  });
+}
+function toggleDevice(idx) {
+  document.getElementById('chip_' + idx).classList.toggle('active');
+}
+
+function renderForm() {
+  const type = document.getElementById('clType').value;
+  const solan = parseInt(document.getElementById('clSoLan').value);
+  const visitsContainer = document.getElementById('visitsContainer');
+  const phoneField = document.getElementById('phoneField');
+  const deepSection = document.getElementById('deepSection');
+  const cancelSection = document.getElementById('cancelSection');
+  const solanLabel = document.getElementById('solanLabel');
+
+  cancelSection.classList.toggle('hidden', type !== 'cancel');
+  solanLabel.textContent = type === 'cancel' ? "Đây là lần huỷ thứ mấy?" : "Số lần lên Checklist";
+
+  visitsContainer.innerHTML = "";
+  if (isNaN(solan) || solan < 1) {
+    phoneField.style.display = 'none';
+    deepSection.classList.add('hidden');
+    return;
+  }
+
+  const visitCount = type === 'cancel' ? solan - 1 : solan;
+  for (let i = 1; i <= visitCount; i++) {
+    const block = document.createElement('div');
+    block.className = 'visit-block';
+    block.innerHTML = `<h4>Lần ${i}</h4>
+      <div class="field"><input type="text" id="nn_${i}" placeholder="NN (Nguyên nhân)..."></div>
+      <div class="field"><input type="text" id="hxl_${i}" placeholder="HXL (Hướng xử lý)..."></div>
+      <div class="field"><input type="text" id="kq_${i}" placeholder="KQ (Kết quả)..."></div>`;
+    visitsContainer.appendChild(block);
+  }
+  phoneField.style.display = (type === 'normal' || visitCount > 0) ? 'block' : 'none';
+  deepSection.classList.toggle('hidden', !(type === 'normal' && solan >= 3));
+}
+
+function toggleNetFields() {
+  const net = document.getElementById('clNet').value;
+  const withPkg = ['Viettel', 'VNPT', 'Mobifone', 'VTVCab'].includes(net);
+  document.getElementById('netPkgBox').classList.toggle('hidden', !withPkg);
+}
+
+document.getElementById('clType').addEventListener('change', renderForm);
+document.getElementById('clSoLan').addEventListener('input', renderForm);
+document.getElementById('clDungRep').addEventListener('change', () => {
+  document.getElementById('repBox').classList.toggle('hidden', document.getElementById('clDungRep').value !== 'Có');
+});
+
+document.getElementById('repFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('repStatus');
+  statusEl.innerHTML = '<span class="sub">⏳ Đang upload...</span>';
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(UPLOAD_URL, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.url) {
+      uploadedRepLink = data.url;
+      statusEl.innerHTML = `<div class="status-ok">✅ Đã upload: ${data.url}</div>`;
+    } else {
+      statusEl.innerHTML = `<div class="status-err">❌ ${data.error || 'Upload lỗi'} - hãy dán link thủ công bên dưới.</div>`;
+    }
+  } catch (err) {
+    statusEl.innerHTML = `<div class="status-err">❌ Không kết nối được server upload - hãy dán link thủ công bên dưới.</div>`;
+  }
+});
+
+function showError(msg) {
+  const el = document.getElementById('errBanner');
+  el.textContent = "⚠️ " + msg;
+  el.classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+function clearError() {
+  document.getElementById('errBanner').classList.add('hidden');
+}
+
+function submitForm() {
+  clearError();
+  const type = document.getElementById('clType').value;
+  const solan = parseInt(document.getElementById('clSoLan').value);
+  if (isNaN(solan) || solan < 1) { showError("Vui lòng nhập số lần hợp lệ (>=1)."); return; }
+
+  const hd = document.getElementById('clHd').value.trim();
+  const ap = document.getElementById('clAp').value.trim();
+  const nc = document.getElementById('clNc').value;
+  const tang = document.getElementById('clTang').value.trim();
+  const vitri = document.getElementById('clVitri').value.trim();
+  const dungrep = document.getElementById('clDungRep').value;
+
+  const missing = [];
+  if (!hd) missing.push("Số hợp đồng");
+  if (!ap) missing.push("Số lượng AP");
+  if (!nc) missing.push("Nhu cầu");
+  if (!tang) missing.push("Số tầng");
+  if (!vitri) missing.push("Vị trí");
+  if (!dungrep) missing.push("Sử dụng rệp");
+  if (missing.length) { showError("Thiếu ở Mục 1: " + missing.join(", ")); return; }
+
+  let linkrep = uploadedRepLink || document.getElementById('clLinkRepManual').value.trim();
+  if (dungrep === 'Có' && !linkrep) { showError("Bạn chọn 'Có' dùng rệp nhưng chưa có link/ảnh rệp."); return; }
+
+  const devices = {};
+  DEVICES.forEach((dev, idx) => {
+    const chip = document.getElementById('chip_' + idx);
+    if (chip.classList.contains('active')) {
+      const qty = document.getElementById('qty_' + idx).value || "1";
+      devices[dev] = qty;
+    }
+  });
+
+  const visitCount = type === 'cancel' ? solan - 1 : solan;
+  const visits = {};
+  for (let i = 1; i <= visitCount; i++) {
+    const nn = document.getElementById('nn_' + i).value.trim();
+    const hxl = document.getElementById('hxl_' + i).value.trim();
+    const kq = document.getElementById('kq_' + i).value.trim();
+    if (!nn || !hxl || !kq) { showError(`Thiếu ở Mục 3, Lần ${i}: cần đủ NN, HXL, KQ.`); return; }
+    visits[i] = { nn, hxl, kq };
+  }
+
+  const phone = document.getElementById('clPhone') ? document.getElementById('clPhone').value.trim() : "";
+
+  const payload = {
+    type, hd, ap, nc, tang, vitri, dungrep, linkrep,
+    devices, solan, visits, phone
+  };
+
+  if (type === 'normal') {
+    if (solan >= 3) {
+      const goc = document.getElementById('clGoc').value.trim();
+      const kn = document.getElementById('clKn').value.trim();
+      if (!goc || !kn) { showError("Thiếu ở Mục 4: Nguyên nhân gốc & Kinh nghiệm."); return; }
+      payload.goc = goc; payload.kn = kn;
+    }
+  } else {
+    const net = document.getElementById('clNet').value;
+    const contactPhone = document.getElementById('clContactPhone').value.trim();
+    const reason = document.getElementById('clReason').value;
+    const otherInfo = document.getElementById('clOtherInfo').value.trim();
+    const missing2 = [];
+    if (!net) missing2.push("Khách hàng chuyển mạng gì");
+    if (!contactPhone) missing2.push("SĐT người tiếp xúc");
+    if (!reason) missing2.push("Nguyên nhân huỷ");
+    let pkg = "", speed = "", devCancel = "";
+    if (['Viettel', 'VNPT', 'Mobifone', 'VTVCab'].includes(net)) {
+      pkg = document.getElementById('clPkg').value.trim();
+      speed = document.getElementById('clSpeed').value.trim();
+      devCancel = document.getElementById('clDevCancel').value.trim();
+      if (!pkg) missing2.push("Gói cước");
+      if (!speed) missing2.push("Tốc độ");
+      if (!devCancel) missing2.push("Thiết bị kèm theo");
+    }
+    if (missing2.length) { showError("Thiếu ở Mục 4 (Thông tin huỷ): " + missing2.join(", ")); return; }
+    payload.net = net; payload.pkg = pkg; payload.speed = speed; payload.dev_cancel = devCancel;
+    payload.contact_phone = contactPhone; payload.reason = reason; payload.other_info = otherInfo;
+  }
+
+  if (tg) {
+    tg.sendData(JSON.stringify(payload));
+    tg.close();
+  } else {
+    alert("Không chạy trong Telegram - dữ liệu:\n" + JSON.stringify(payload, null, 2));
+  }
+}
+
+buildDeviceList();
+renderForm();
+</script>
+</body>
+</html>
