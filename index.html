@@ -45,14 +45,28 @@
   .footer-bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 14px; background: var(--bg); border-top: 1px solid #e2e2e2; }
   .submit-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--button); color: var(--button-text); font-size: 16px; font-weight: 700; cursor: pointer; }
   .err-banner { background: #fff5f5; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+  #resultView textarea { width: 100%; min-height: 260px; padding: 12px; border: 1px solid #28a745; border-radius: 8px; font-size: 14px; line-height: 1.5; background: var(--bg); color: var(--text); }
+  .result-toolbar { display: flex; gap: 10px; margin: 10px 0; }
+  .btn-copy { flex: 1; background: #28a745; color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .btn-back { flex: 1; background: var(--secbg); color: var(--text); border: 1px solid #d0d0d5; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; }
 </style>
 </head>
 <body>
 
 <h2>📝 Ghi chú Checklist</h2>
-<div class="sub">Form backup khi trang web chính bị lỗi. Điền xong bấm nút bên dưới để gửi thẳng về bot Telegram.</div>
+<div class="sub">Form backup khi trang web chính bị lỗi. Điền xong bấm nút bên dưới để xuất kết quả rồi copy dán vào hệ thống checklist.</div>
 
 <div id="errBanner" class="err-banner hidden"></div>
+
+<div id="resultView" class="hidden">
+  <textarea id="resultText" readonly></textarea>
+  <div class="result-toolbar">
+    <button class="btn-copy" onclick="copyResult()">📋 Copy kết quả</button>
+    <button class="btn-back" onclick="backToForm()">✏️ Sửa lại</button>
+  </div>
+</div>
+
+<div id="formView">
 
 <div class="section">
   <div class="section-title">Loại &amp; số lần</div>
@@ -156,8 +170,10 @@
 
 <div style="height:8px;"></div>
 
-<div class="footer-bar">
-  <button class="submit-btn" onclick="submitForm()">🚀 Gửi ghi chú về Bot</button>
+</div>
+
+<div class="footer-bar" id="footerBar">
+  <button class="submit-btn" onclick="submitForm()">🚀 Xuất kết quả</button>
 </div>
 
 <script>
@@ -340,12 +356,89 @@ function submitForm() {
     payload.contact_phone = contactPhone; payload.reason = reason; payload.other_info = otherInfo;
   }
 
-  if (tg) {
-    tg.sendData(JSON.stringify(payload));
-    tg.close();
+  showResult(buildFinalText(payload));
+}
+
+// Sinh văn bản kết quả cuối cùng - PHẢI khớp 100% với _cl_build_text() trong
+// Bot_LVT/checklist_wizard.py (dùng để phân loại OK/Not OK ở Power Query/DAX).
+function buildFinalText(p) {
+  const SHORT = { "Điện thoại di động": "ĐTDD", "Máy tính": "PC", "Smart TV": "TV", "Laptop": "Lap" };
+  const devResults = [];
+  DEVICES.forEach(dev => {
+    if (p.devices[dev] !== undefined) {
+      devResults.push(`${SHORT[dev] || dev}:${p.devices[dev]}`);
+    }
+  });
+  const tbStr = devResults.length ? devResults.join(", ") : "_";
+  const hdPrefix = p.hd ? `HĐ: ${p.hd} - ` : "";
+  const lines = [];
+
+  if (p.type === 'cancel') {
+    const visitCount = p.solan - 1;
+    lines.push(`${hdPrefix}Checklist huỷ lần: ${p.solan}`);
+    lines.push(`1. Mô hình: AP:${p.ap}, NC:${p.nc}, Tầng:${p.tang}, Vị trí:${p.vitri}, Dùng rệp:${p.dungrep}`);
+    if (p.dungrep === 'Có' && p.linkrep) lines.push(`link rệp : ${p.linkrep}`);
+    lines.push(`2. TB: ${tbStr}`);
+    if (visitCount > 0) {
+      lines.push("3. Xử lý:");
+      for (let i = 1; i <= visitCount; i++) {
+        const v = p.visits[i] || {};
+        lines.push(`L${i}: NN:${v.nn || ''}, HXL:${v.hxl || ''}, KQ:${v.kq || ''}`);
+      }
+      if (p.phone) lines.push(`-> SĐT Recare: ${p.phone}`);
+    }
+    lines.push("4. TT huỷ:");
+    lines.push(`KH chuyển: ${p.net}`);
+    if (['Viettel', 'VNPT', 'Mobifone', 'VTVCab'].includes(p.net)) {
+      lines.push(`Gói: ${p.pkg}`);
+      lines.push(`Tốc độ: ${p.speed}`);
+      lines.push(`TB: ${p.dev_cancel}`);
+    }
+    lines.push("TT tiếp nhận:");
+    lines.push(`SĐT tiếp xúc: ${p.contact_phone}`);
+    lines.push(`NN huỷ: ${p.reason}`);
+    if (p.other_info) lines.push(`Ghi chú: ${p.other_info}`);
   } else {
-    alert("Không chạy trong Telegram - dữ liệu:\n" + JSON.stringify(payload, null, 2));
+    lines.push(`${hdPrefix}Checklist lần: ${p.solan}`);
+    lines.push(`1. Mô hình: AP:${p.ap}, NC:${p.nc}, Tầng:${p.tang}, Vị trí:${p.vitri}, Dùng rệp:${p.dungrep}`);
+    if (p.dungrep === 'Có' && p.linkrep) lines.push(`link rệp : ${p.linkrep}`);
+    lines.push(`2. TB: ${tbStr}`);
+    lines.push("3. Xử lý:");
+    for (let i = 1; i <= p.solan; i++) {
+      const v = p.visits[i] || {};
+      lines.push(`L${i}: NN:${v.nn || ''}, HXL:${v.hxl || ''}, KQ:${v.kq || ''}`);
+    }
+    if (p.phone) lines.push(`-> SĐT Recare: ${p.phone}`);
+    if (p.solan >= 3) lines.push(`4. Triệt để: Gốc:${p.goc}, KN:${p.kn}`);
   }
+  return lines.join("\n").trim();
+}
+
+function showResult(text) {
+  document.getElementById('resultText').value = text;
+  document.getElementById('formView').classList.add('hidden');
+  document.getElementById('footerBar').classList.add('hidden');
+  document.getElementById('resultView').classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+
+function backToForm() {
+  document.getElementById('resultView').classList.add('hidden');
+  document.getElementById('formView').classList.remove('hidden');
+  document.getElementById('footerBar').classList.remove('hidden');
+}
+
+function copyResult() {
+  const ta = document.getElementById('resultText');
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    const old = btn.textContent;
+    btn.textContent = '✅ Đã copy!';
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  }).catch(() => {
+    document.execCommand('copy');
+  });
 }
 
 buildDeviceList();
